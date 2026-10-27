@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 1,
+  "id": "vaultpeek42",
+  "version": "${version}",
+  "name": "Vault Peek 42",
+  "description": "Client-side reference screen for ominous vault loot in Minecraft 1.21.4.",
+  "authors": ["Vault Peek 42"],
+  "license": "MIT",
+  "environment": "client",
+  "entrypoints": {
+    "client": [
+      "dev.vaultpeek.VaultPeekClient"
+    ]
+  },
+  "depends": {
+    "fabricloader": ">=0.16.10",
+    "minecraft": "~1.21.4",
+    "java": ">=21",
+    "fabric-api": "*"
+  }
+}
