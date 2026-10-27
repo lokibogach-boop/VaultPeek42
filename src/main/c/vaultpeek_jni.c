@@ -32,6 +32,30 @@ static Xoroshiro ominous_sequence_seed(int64_t world_seed) {
     return state;
 }
 
+
+/* Keep special loot outcomes generic in the public sequence viewer. */
+static int is_special_or_weapon_related_reward(const char *name) {
+    return strcmp(name, "minecraft:heavy_core") == 0
+        || strcmp(name, "minecraft:enchanted_golden_apple") == 0
+        || strcmp(name, "minecraft:flow_armor_trim_smithing_template") == 0
+        || strcmp(name, "minecraft:flow_banner_pattern") == 0
+        || strcmp(name, "minecraft:music_disc_creator") == 0
+        || strcmp(name, "minecraft:crossbow") == 0
+        || strcmp(name, "minecraft:diamond_axe") == 0
+        || strcmp(name, "minecraft:book") == 0
+        || strstr(name, "_sword") != NULL
+        || strstr(name, "_axe") != NULL
+        || strstr(name, "_bow") != NULL
+        || strstr(name, "trident") != NULL
+        || strstr(name, "mace") != NULL;
+}
+
+static const char *safe_display_name(const char *name) {
+    return is_special_or_weapon_related_reward(name)
+            ? "vaultpeek:special_reward"
+            : name;
+}
+
 JNIEXPORT jobjectArray JNICALL
 Java_dev_vaultpeek_NativeLootPredictor_generateOminousNative(
         JNIEnv *env, jclass clazz, jlong world_seed, jint offset, jint amount) {
@@ -78,6 +102,7 @@ Java_dev_vaultpeek_NativeLootPredictor_generateOminousNative(
             if (name == NULL || stack->count <= 0) {
                 continue;
             }
+            name = safe_display_name(name);
 
             int written = snprintf(
                     buffer + used,
