@@ -47,7 +47,7 @@ jobs:
         shell: msys2 {0}
         run: |
           mkdir -p src/main/resources/native/windows-x86_64
-          cp build/native/vaultpeeknative.dll src/main/resources/native/windows-x86_64/vaultpeeknative.dll
+          cp build/native/libvaultpeeknative.dll src/main/resources/native/windows-x86_64/vaultpeeknative.dll
 
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
