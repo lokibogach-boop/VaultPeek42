@@ -10,12 +10,20 @@ endif()
 
 file(TO_CMAKE_PATH "${JAVA_HOME}" JAVA_HOME_CMAKE)
 
+if(WIN32)
+    set(JAVA_PLATFORM_INCLUDE "win32")
+elseif(APPLE)
+    set(JAVA_PLATFORM_INCLUDE "darwin")
+else()
+    set(JAVA_PLATFORM_INCLUDE "linux")
+endif()
+
 add_subdirectory(cubiomes)
 
 add_library(vaultpeeknative SHARED vaultpeek_jni.c)
 target_include_directories(vaultpeeknative PRIVATE
     "${JAVA_HOME_CMAKE}/include"
-    "${JAVA_HOME_CMAKE}/include/win32"
+    "${JAVA_HOME_CMAKE}/include/${JAVA_PLATFORM_INCLUDE}"
     "${CMAKE_CURRENT_SOURCE_DIR}/cubiomes"
     "${CMAKE_CURRENT_SOURCE_DIR}/cubiomes/loot"
 )
