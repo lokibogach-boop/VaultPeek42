@@ -28,4 +28,8 @@ target_include_directories(vaultpeeknative PRIVATE
     "${CMAKE_CURRENT_SOURCE_DIR}/cubiomes/loot"
 )
 target_link_libraries(vaultpeeknative PRIVATE cubiomes_static)
+if(MINGW)
+    # Avoid requiring the user to install the MinGW GCC runtime separately.
+    target_link_options(vaultpeeknative PRIVATE -static-libgcc)
+endif()
 set_target_properties(vaultpeeknative PROPERTIES OUTPUT_NAME "vaultpeeknative")
