@@ -1,7 +1,6 @@
 package dev.vaultpeek;
 
 import net.minecraft.item.ItemStack;
-import net.minecraft.item.Items;
 import net.minecraft.registry.Registries;
 import net.minecraft.util.Identifier;
 
@@ -45,12 +44,9 @@ public final class NativeLootPredictor {
                     } catch (NumberFormatException ignored) {
                         continue;
                     }
-
                     Identifier id = Identifier.tryParse(itemId);
                     if (id == null) continue;
-                    var item = itemId.equals("vaultpeek:special_reward")
-                            ? Items.CHEST
-                            : Registries.ITEM.get(id);
+                    var item = Registries.ITEM.get(id);
                     if (item == null) continue;
                     stacks.add(new PredictedStack(new ItemStack(item, Math.max(1, count)), itemId));
                 }
