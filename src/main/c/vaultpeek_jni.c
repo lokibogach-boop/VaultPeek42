@@ -8,6 +8,7 @@
 #include "loot/loot_tables.h"
 #include "loot/loot_table_context.h"
 #include "loot/loot_functions.h"
+#include "loot/loot_table_parser.h"
 
 static uint64_t mix_stafford13(uint64_t value) {
     value = (value ^ (value >> 30)) * UINT64_C(0xbf58476d1ce4e5b9);
