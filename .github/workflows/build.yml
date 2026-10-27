@@ -10,29 +10,58 @@ permissions:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: windows-latest
     steps:
-      - name: Checkout repository
+      - name: Checkout repository and Cubiomes submodule
         uses: actions/checkout@v4
+        with:
+          submodules: true
 
       - name: Set up Java 21
+        id: java
         uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: "21"
+
+      - name: Set up MSYS2 native toolchain
+        uses: msys2/setup-msys2@v2
+        with:
+          msystem: UCRT64
+          update: true
+          install: >-
+            mingw-w64-ucrt-x86_64-toolchain
+            mingw-w64-ucrt-x86_64-cmake
+            mingw-w64-ucrt-x86_64-ninja
+
+      - name: Build native loot generator
+        shell: msys2 {0}
+        env:
+          JAVA_HOME_WIN: ${{ steps.java.outputs.path }}
+        run: |
+          JAVA_HOME_CMAKE="$(cygpath -m "$JAVA_HOME_WIN")"
+          cmake -S src/main/c -B build/native -G Ninja -DJAVA_HOME="$JAVA_HOME_CMAKE" -DCMAKE_BUILD_TYPE=Release
+          cmake --build build/native --parallel
+
+      - name: Bundle native DLL
+        shell: msys2 {0}
+        run: |
+          mkdir -p src/main/resources/native/windows-x86_64
+          cp build/native/vaultpeeknative.dll src/main/resources/native/windows-x86_64/vaultpeeknative.dll
 
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: "8.11.1"
 
-      - name: Build mod
+      - name: Build mod JAR
+        shell: pwsh
         run: gradle build --no-daemon
 
       - name: Upload JAR
         uses: actions/upload-artifact@v4
         with:
-          name: VaultPeek42-jar
+          name: VaultPeek42-windows-x86_64
           path: build/libs/*.jar
           if-no-files-found: error
           retention-days: 14
