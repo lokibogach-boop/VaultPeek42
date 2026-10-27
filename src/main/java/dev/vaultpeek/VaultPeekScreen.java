@@ -5,14 +5,12 @@ import net.minecraft.client.gui.screen.Screen;
 import net.minecraft.client.gui.widget.ButtonWidget;
 import net.minecraft.client.gui.widget.TextFieldWidget;
 import net.minecraft.item.ItemStack;
-import net.minecraft.item.Items;
 import net.minecraft.text.Text;
 
 import java.util.List;
 
 public final class VaultPeekScreen extends Screen {
     private static final int VISIBLE_VAULTS = 12;
-    private static final int CORE_SCAN_LIMIT = 5000;
 
     private TextFieldWidget seedField;
     private TextFieldWidget offsetField;
@@ -29,8 +27,6 @@ public final class VaultPeekScreen extends Screen {
     protected void init() {
         int centerX = this.width / 2;
 
-        contextLabels(centerX);
-
         seedField = new TextFieldWidget(textRenderer, centerX - 295, 52, 220, 20, Text.literal("Сид мира"));
         seedField.setPlaceholder(Text.literal("Числовой сид мира"));
         seedField.setMaxLength(20);
@@ -43,12 +39,19 @@ public final class VaultPeekScreen extends Screen {
 
         addDrawableChild(ButtonWidget.builder(Text.literal("Предсказать 12"), button -> predictRange())
                 .dimensions(centerX + 25, 52, 110, 20).build());
-        addDrawableChild(ButtonWidget.builder(Text.literal("Найти ядро"), button -> findCore())
+        addDrawableChild(ButtonWidget.builder(Text.literal("Следующие 12"), button -> nextRange())
                 .dimensions(centerX + 140, 52, 110, 20).build());
     }
 
-    private void contextLabels(int centerX) {
-        // Labels are drawn from render(), where the screen context is available.
+    private void nextRange() {
+        try {
+            int offset = readOffset();
+            offsetField.setText(Integer.toString(Math.addExact(offset, VISIBLE_VAULTS)));
+            predictRange();
+        } catch (Exception e) {
+            status = "Не удалось перейти дальше.";
+            detail = safeMessage(e);
+        }
     }
 
     private void predictRange() {
@@ -57,50 +60,12 @@ public final class VaultPeekScreen extends Screen {
             int offset = readOffset();
             predicted = NativeLootPredictor.generateOminous(seed, offset, VISIBLE_VAULTS);
             displayedOffset = offset;
-            status = "Показаны следующие " + predicted.size() + " хранилищ.";
-            detail = "Нумерация с начала последовательности: " + (offset + 1)
+            status = "Показана рассчитанная последовательность наград.";
+            detail = "Номера с начала последовательности: " + (offset + 1)
                     + "–" + (offset + predicted.size()) + ".";
         } catch (Exception | LinkageError e) {
             predicted = List.of();
-            status = "Не удалось построить прогноз.";
-            detail = safeMessage(e);
-        }
-    }
-
-    private void findCore() {
-        try {
-            long seed = readSeed();
-            int offset = readOffset();
-            status = "Ищу тяжёлое ядро в следующих " + CORE_SCAN_LIMIT + " хранилищах…";
-            List<List<NativeLootPredictor.PredictedStack>> sequence =
-                    NativeLootPredictor.generateOminous(seed, offset, CORE_SCAN_LIMIT);
-
-            int foundAt = -1;
-            for (int i = 0; i < sequence.size(); i++) {
-                if (containsHeavyCore(sequence.get(i))) {
-                    foundAt = i;
-                    break;
-                }
-            }
-
-            if (foundAt < 0) {
-                predicted = sequence.subList(0, Math.min(VISIBLE_VAULTS, sequence.size()));
-                displayedOffset = offset;
-                status = "В этом диапазоне тяжёлое ядро не найдено.";
-                detail = "Проверь сид или увеличь начальную позицию и попробуй снова.";
-                return;
-            }
-
-            int displayStart = Math.max(0, foundAt - 5);
-            int displayEnd = Math.min(sequence.size(), displayStart + VISIBLE_VAULTS);
-            predicted = sequence.subList(displayStart, displayEnd);
-            displayedOffset = offset + displayStart;
-            int globalNumber = offset + foundAt + 1;
-            status = "Тяжёлое ядро: хранилище № " + globalNumber + " в этой последовательности.";
-            detail = "От указанной позиции — " + (foundAt + 1) + "-е открытие. Строка с ядром выделена.";
-        } catch (Exception | LinkageError e) {
-            predicted = List.of();
-            status = "Не удалось рассчитать последовательность.";
+            status = "Не удалось построить последовательность.";
             detail = safeMessage(e);
         }
     }
@@ -132,10 +97,6 @@ public final class VaultPeekScreen extends Screen {
     private static String safeMessage(Throwable e) {
         String message = e.getMessage();
         return message == null || message.isBlank() ? e.getClass().getSimpleName() : message;
-    }
-
-    private static boolean containsHeavyCore(List<NativeLootPredictor.PredictedStack> items) {
-        return items.stream().anyMatch(entry -> entry.stack().isOf(Items.HEAVY_CORE));
     }
 
     @Override
@@ -179,23 +140,25 @@ public final class VaultPeekScreen extends Screen {
             int row = i / columns;
             int x = startX + col * (cellW + gapX);
             int y = startY + row * (cellH + gapY);
-            boolean hasCore = containsHeavyCore(items);
 
-            context.fill(x, y, x + cellW, y + cellH, hasCore ? 0xCC45391C : 0xCC202632);
-            context.drawBorder(x, y, cellW, cellH, hasCore ? 0xFFFFD76A : 0xFF59677D);
+            context.fill(x, y, x + cellW, y + cellH, 0xCC202632);
+            context.drawBorder(x, y, cellW, cellH, 0xFF59677D);
             context.drawText(
                     textRenderer,
                     Text.literal("Хранилище № " + (displayedOffset + i + 1)),
-                    x + 6, y + 4,
-                    hasCore ? 0xFFFFD76A : 0xFFFFFFFF,
-                    false
+                    x + 6, y + 4, 0xFFFFFFFF, false
             );
 
             int iconX = x + 6;
             int iconY = y + 22;
             for (int itemIndex = 0; itemIndex < items.size() && itemIndex < 7; itemIndex++) {
-                ItemStack stack = items.get(itemIndex).stack();
-                context.drawItem(stack, iconX + itemIndex * 29, iconY);
+                NativeLootPredictor.PredictedStack predictedStack = items.get(itemIndex);
+                ItemStack stack = predictedStack.stack();
+                int itemX = iconX + itemIndex * 29;
+                context.drawItem(stack, itemX, iconY);
+                if (predictedStack.itemId().equals("vaultpeek:special_reward")) {
+                    context.drawText(textRenderer, Text.literal("?"), itemX + 12, iconY - 4, 0xFFFFD76A, false);
+                }
             }
             if (items.isEmpty()) {
                 context.drawText(textRenderer, Text.literal("Нет предметов в расчёте"),
@@ -206,13 +169,16 @@ public final class VaultPeekScreen extends Screen {
         int footerY = startY + 4 * (cellH + gapY) + 2;
         context.drawCenteredTextWithShadow(
                 textRenderer,
-                Text.literal("Важно: точный результат требует правильного сида и актуальной позиции последовательности."),
+                Text.literal("Важно: правильный результат зависит от сида и позиции последовательности."),
                 cx, footerY, 0xFFFFD58A
         );
         context.drawCenteredTextWithShadow(
                 textRenderer,
                 Text.literal("На сервере с ранее открытыми хранилищами позицию пока нужно задавать вручную."),
                 cx, footerY + 13, 0xFFC8CFDB
+        );
+        context.drawCenteredTextWithShadow(
+                textRenderer, Text.literal("Некоторые специальные награды отмечаются знаком ?."), cx, footerY + 26, 0xFFC8CFDB
         );
         context.drawCenteredTextWithShadow(
                 textRenderer, Text.literal("Esc — закрыть окно"), cx, this.height - 18, 0xFFAAAAAA
