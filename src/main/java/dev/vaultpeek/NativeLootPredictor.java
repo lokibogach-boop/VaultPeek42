@@ -21,7 +21,7 @@ public final class NativeLootPredictor {
     public record PredictedStack(ItemStack stack, String itemId) {}
 
     public static List<List<PredictedStack>> generateOminous(long seed, int offset, int amount) {
-        if (offset < 0 || amount < 1 || amount > 1000 || offset > 1000000) {
+        if (offset < 0 || amount < 1 || amount > 5000 || offset > 1000000) {
             throw new IllegalArgumentException("Слишком большой диапазон прогноза.");
         }
         ensureLoaded();
@@ -56,7 +56,7 @@ public final class NativeLootPredictor {
         return List.copyOf(result);
     }
 
-    public static void ensureLoaded() {
+    private static void ensureLoaded() {
         if (loaded) return;
         synchronized (NativeLootPredictor.class) {
             if (loaded) return;
@@ -72,8 +72,7 @@ public final class NativeLootPredictor {
             } else if ((os.contains("mac") || os.contains("darwin")) && (arch.contains("64") || arch.equals("aarch64"))) {
                 resource = "/native/macos/libvaultpeeknative.dylib";
             } else {
-                loadError = "Для этой системы пока нет готового нативного генератора. "
-                        + "Используй Windows x64 JAR из GitHub Actions.";
+                loadError = "Для этой системы пока нет готового нативного генератора.";
                 throw new IllegalStateException(loadError);
             }
 
@@ -87,7 +86,7 @@ public final class NativeLootPredictor {
                 Files.copy(input, extracted, java.nio.file.StandardCopyOption.REPLACE_EXISTING);
                 System.load(extracted.toAbsolutePath().toString());
                 loaded = true;
-            } catch (Exception e) {
+            } catch (Exception | LinkageError e) {
                 loadError = "Не удалось загрузить модуль предсказания: " + e.getMessage();
                 throw new IllegalStateException(loadError, e);
             }
